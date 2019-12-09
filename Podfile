@@ -7,6 +7,8 @@ target 'MVVMPlayground' do
   inhibit_all_warnings!
   # Pods for MVVMPlayground
   pod 'SDWebImage', '~> 4.0'
+  pod 'RxSwift', '~> 5'
+  pod 'RxCocoa', '~> 5'
   target 'MVVMPlaygroundTests' do
     inherit! :search_paths
     # Pods for testing

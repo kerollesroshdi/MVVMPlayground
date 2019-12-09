@@ -7,6 +7,8 @@
 //
 
 import Foundation
+import RxSwift
+import RxCocoa
 
 class PhotoListViewModel {
     
@@ -14,30 +16,12 @@ class PhotoListViewModel {
 
     private var photos: [Photo] = [Photo]()
     
-    private var cellViewModels: [PhotoListCellViewModel] = [PhotoListCellViewModel]() {
-        didSet {
-            self.reloadTableViewClosure?()
-        }
-    }
+    // Rx:
+    let cellViewModels: PublishSubject<[PhotoListCellViewModel]> = PublishSubject()
+    let state: PublishSubject<State> = PublishSubject()
+    let alertMessage: PublishSubject<String> = PublishSubject()
 
-    // callback for interfaces
-    var state: State = .empty {
-        didSet {
-            self.updateLoadingStatus?()
-        }
-    }
-    
-    var alertMessage: String? {
-        didSet {
-            self.showAlertClosure?()
-        }
-    }
-    
-    var numberOfCells: Int {
-        return cellViewModels.count
-    }
-    
-    var isAllowSegue: Bool = false
+    var isAllowSegue: PublishSubject<Bool> = PublishSubject()
     
     var selectedPhoto: Photo?
 
@@ -50,27 +34,23 @@ class PhotoListViewModel {
     }
     
     func initFetch() {
-        state = .loading
+        state.onNext(.loading)
         apiService.fetchPopularPhoto { [weak self] (success, photos, error) in
             guard let self = self else {
                 return
             }
 
             guard error == nil else {
-                self.state = .error
-                self.alertMessage = error?.rawValue
+                self.state.onNext(.error)
+                self.alertMessage.onNext(error?.rawValue ?? "Error")
                 return
             }
 
             self.processFetchedPhoto(photos: photos)
-            self.state = .populated
+            self.state.onNext(.populated)
         }
     }
-    
-    func getCellViewModel( at indexPath: IndexPath ) -> PhotoListCellViewModel {
-        return cellViewModels[indexPath.row]
-    }
-    
+        
     func createCellViewModel( photo: Photo ) -> PhotoListCellViewModel {
 
         //Wrap a description
@@ -98,21 +78,21 @@ class PhotoListViewModel {
         for photo in photos {
             vms.append( createCellViewModel(photo: photo) )
         }
-        self.cellViewModels = vms
+        self.cellViewModels.onNext(vms)
     }
     
 }
 
 extension PhotoListViewModel {
-    func userPressed( at indexPath: IndexPath ){
+    func userPressed( at indexPath: IndexPath ) {
         let photo = self.photos[indexPath.row]
         if photo.for_sale {
-            self.isAllowSegue = true
             self.selectedPhoto = photo
+            self.isAllowSegue.onNext(true)
         }else {
-            self.isAllowSegue = false
             self.selectedPhoto = nil
-            self.alertMessage = "This item is not for sale"
+            self.isAllowSegue.onNext(false)
+            self.alertMessage.onNext("This item is not for sale")
         }
         
     }
